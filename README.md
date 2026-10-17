@@ -1,7 +1,8 @@
 # International Life: Android app with online updates
 
-The APK is a tiny launcher. The game files live on Cloudflare Pages. When you open the app it checks
-`<your link>/manifest.json`, shows how many files / MB changed, asks **Download**, then starts the game.
+The APK is a tiny launcher. The game files live on Cloudflare Pages. When you open the app it plays the Beta Lagos RP launch sequence
+(DOTCON -> logo -> Welcome to Lagos -> tap). On the loading screen it says CHECKING FOR UPDATES, and if `<your link>/manifest.json`
+shows changes it asks **Update / Later** right there, downloads with the same loading bar, then starts the game (which skips its own intro).
 Only changed files are downloaded. You rebuild the APK only if you change the launcher itself.
 
 ## One-time setup
@@ -40,3 +41,7 @@ Useful options: `npm run update -- --notes "New car added"` (message in the prom
 ## App icon
 The Beta Lagos RP logo is installed as the launcher icon by `npm run apk` from `android-overrides/res/`
 (adaptive icon + legacy + round). `store/play-store-icon-512.png` is the 512 px version for the Play Store.
+
+## Launch screens
+- The APK page is built from `game/public/launch/launch.html` (`scripts/launch-page.mjs` + `launcher/launch-bridge.js`), so the intro looks the same in the app and in the game.
+- If you change the launch sequence, rebuild the APK (and run `npm run update` so the game copy matches). The build stops with a clear message if the page changed in a way the launcher cannot handle.

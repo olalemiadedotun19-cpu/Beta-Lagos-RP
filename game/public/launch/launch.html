@@ -115,6 +115,7 @@ h1{margin:0;font:700 clamp(24px,calc(7.6*var(--vh)),56px)/1.08 inherit;font-fami
 
 /* phone held upright: turn the whole game sideways so it is always landscape (no "rotate your phone" prompt) */
 .rot #app{inset:auto;top:0;left:0;width:calc(100*var(--vw));height:calc(100*var(--vh));transform-origin:0 0;transform:translateX(calc(100*var(--vh))) rotate(90deg)}
+.sk .lg{opacity:1;clip-path:inset(-10% -10% -10% -10%);animation:float 6s ease-in-out infinite}.sk .shine{opacity:1;animation:sweep 4s 1s ease-in-out infinite}
 </style></head>
 <body>
 <div id="app" data-s="splash">
@@ -387,6 +388,11 @@ async function load(){
 let runId = 0;
 async function play(){
   const id = ++runId;
+  /* Android app: the launcher already played DOTCON -> logo -> welcome -> loading (and checked for updates there),
+     so the game's own copy of this page goes straight to its loading screen. One-shot flag set by the launcher. */
+  let skipIntro = false;
+  try { if (!window.__IS_LAUNCHER && localStorage.getItem('bl_skip_intro') === '1'){ skipIntro = true; localStorage.removeItem('bl_skip_intro'); } } catch(e){}
+  if (skipIntro){ app.classList.add('sk'); app.dataset.s = 'load'; zT = 1.07; setTimeout(load, 300); return; }
   $('#replay').style.display = 'none'; $('#bgimg').style.opacity = 0; zT = 1;
   app.classList.remove('go','dc');
   if (CONFIG.touchGate !== false && SFX.state() === 'suspended'){

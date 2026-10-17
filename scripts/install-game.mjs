@@ -6,5 +6,5 @@ import { resolve } from 'node:path';
 if (process.env.SKIP_GAME_INSTALL) process.exit(0);
 const gameDir = resolve(import.meta.dirname, '..', 'game');
 if (!existsSync(resolve(gameDir, 'package.json'))) process.exit(0);
-const r = spawnSync('npm', ['install', '--no-audit', '--no-fund'], { cwd: gameDir, stdio: 'inherit', shell: true });
+const r = spawnSync('npm', ['install', '--no-audit', '--no-fund', '--legacy-peer-deps'], { cwd: gameDir, stdio: 'inherit', shell: true });
 process.exit(r.status ?? 1);
