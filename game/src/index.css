@@ -1,0 +1,480 @@
+@import "tailwindcss";
+/* HUD typeface: Barlow Condensed (latin subset, self-hosted via @fontsource: works offline, no network request at runtime) */
+@import "@fontsource/barlow-condensed/latin-500.css";
+@import "@fontsource/barlow-condensed/latin-600.css";
+@import "@fontsource/barlow-condensed/latin-700.css";
+
+/* =====================================================================================
+   Gameplay HUD (src/ui/GameHUD.tsx + src/ui/hud/*)
+   Look: restrained console-RPG HUD. Near-black translucent panels, hairline borders, tight corners, one warm accent,
+   condensed uppercase labels, text-shadowed numerals. No backdrop-filter / blur anywhere (mobile GPU budget).
+   ===================================================================================== */
+.hud-layer {
+  /* safe-area aware gutters (notches / rounded corners / gesture bars) */
+  --hud-l: max(12px, env(safe-area-inset-left, 0px));
+  --hud-r: max(12px, env(safe-area-inset-right, 0px));
+  --hud-t: max(10px, env(safe-area-inset-top, 0px));
+  --hud-b: max(14px, env(safe-area-inset-bottom, 0px));
+  /* responsive sizes, driven by viewport height so landscape phones stay uncluttered */
+  --mini: calc(clamp(88px, min(25vw, 31vh), 132px) * var(--hud-k, 1));
+  --hud-u: calc(clamp(40px, 11.5vh, 46px) * var(--hud-k, 1)); /* utility buttons */
+  --hud-s: calc(clamp(46px, 13.5vh, 54px) * var(--hud-k, 1)); /* secondary action buttons */
+  --hud-p: calc(clamp(58px, 17.5vh, 74px) * var(--hud-k, 1)); /* primary action (Jump) */
+  --hud-joy: calc(clamp(96px, 30vh, 120px) * var(--hud-k, 1));
+
+  /* palette */
+  --hud-ink: #f1f4f8;
+  --hud-dim: #93a0b2;
+  --hud-panel: rgba(9, 12, 17, 0.72);
+  --hud-line: rgba(255, 255, 255, 0.12);
+  --hud-accent: #f2c14e;
+  --hud-cash: #8fd694;
+  --hud-route: #e163d6;
+
+  font-family: 'Barlow Condensed', 'Arial Narrow', 'Roboto Condensed', system-ui, sans-serif;
+  font-variant-numeric: tabular-nums lining-nums;
+  letter-spacing: 0.025em;
+  color: var(--hud-ink);
+  -webkit-font-smoothing: antialiased;
+}
+/* soft corner scrims: they seat the HUD into the picture and keep text legible on bright sky (static gradients, ~free) */
+.hud-layer::before,
+.hud-layer::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  pointer-events: none;
+}
+.hud-layer::before {
+  top: 0;
+  height: 30%;
+  background: linear-gradient(to bottom, rgba(0, 0, 0, 0.34), rgba(0, 0, 0, 0));
+}
+.hud-layer::after {
+  bottom: 0;
+  height: 28%;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.3), rgba(0, 0, 0, 0));
+}
+/* the font stack above replaces the old mono look for numerals everywhere in the HUD */
+.hud-layer .font-mono {
+  font-family: inherit;
+}
+
+.hud-nocallout {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: none;
+}
+
+/* Joystick / camera zones only intercept TOUCH devices, so desktop mouse-orbit on the canvas keeps working */
+.hud-touch-zone {
+  pointer-events: none;
+}
+@media (pointer: coarse) {
+  .hud-touch-zone {
+    pointer-events: auto;
+  }
+}
+
+.hud-label {
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--hud-dim);
+}
+.hud-shadow {
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.85), 0 0 6px rgba(0, 0, 0, 0.45);
+}
+
+.hud-glass {
+  background: var(--hud-panel);
+  border: 1px solid var(--hud-line);
+  border-radius: 6px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.28);
+  color: var(--hud-ink);
+}
+
+.hud-btn {
+  background: rgba(8, 10, 14, 0.52);
+  border: 1.5px solid rgba(255, 255, 255, 0.34);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.4), inset 0 0 0 2px rgba(0, 0, 0, 0.28);
+  color: var(--hud-ink);
+  transition: transform 90ms ease-out, background-color 120ms, border-color 120ms, opacity 120ms;
+  outline: none;
+}
+.hud-btn[data-pressed] {
+  transform: scale(0.92);
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.7);
+}
+.hud-btn[data-active] {
+  background: rgba(242, 193, 78, 0.16);
+  border-color: var(--hud-accent);
+  color: var(--hud-accent);
+}
+.hud-btn[data-variant='primary'] {
+  background: var(--hud-accent);
+  border-color: rgba(255, 244, 214, 0.9);
+  color: #15110a;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.45), inset 0 0 0 2px rgba(255, 255, 255, 0.22);
+}
+.hud-btn[data-variant='primary'][data-pressed] {
+  background: #ffd978;
+}
+.hud-btn[data-disabled] {
+  opacity: 0.38;
+  cursor: default;
+}
+
+/* ---- action row: Jump in the corner, then Sprint / Punch / Aim to its left; wraps upwards on a narrow screen ---- */
+.hud-actions {
+  opacity: var(--ctl-o, 1);
+  display: flex;
+  flex-direction: row-reverse;
+  flex-wrap: wrap-reverse;
+  justify-content: flex-start;
+  align-items: flex-end;
+  gap: 8px;
+  max-width: min(420px, calc(100vw - 2 * var(--hud-r) - 30vw));
+}
+
+/* ---- rearrange mode (Settings > Interface > Rearrange HUD): every HUD item becomes one draggable box ---- */
+.hud-edit {
+  pointer-events: auto !important;
+  touch-action: none;
+  cursor: grab;
+  position: relative;
+  z-index: 40;
+  outline: 2px dashed var(--hud-accent);
+  outline-offset: 3px;
+  border-radius: 10px;
+  background: rgba(242, 193, 78, 0.1);
+}
+.hud-edit.absolute {
+  position: absolute;
+}
+.hud-edit * {
+  pointer-events: none !important;
+}
+.hud-edit[data-dragging] {
+  cursor: grabbing;
+  outline-style: solid;
+  background: rgba(242, 193, 78, 0.22);
+}
+.hud-edit-tag {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  max-width: 100%;
+  padding: 1px 7px 0;
+  border-radius: 3px;
+  background: rgba(5, 8, 11, 0.85);
+  border: 1px solid var(--hud-accent);
+  color: var(--hud-accent);
+  font-size: 10px;
+  line-height: 1.4;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none;
+}
+
+/* ---- minimap ------------------------------------------------------------------------------ */
+.hud-mini {
+  background: #0a0d12;
+  -webkit-tap-highlight-color: transparent;
+}
+.hud-mini-clip {
+  clip-path: circle(50% at 50% 50%);
+  isolation: isolate;
+}
+.hud-mini-layer {
+  pointer-events: none;
+  backface-visibility: hidden;
+  will-change: transform;
+}
+/* horizon haze (far edge of the tilted plane) + gentle edge falloff */
+.hud-mini-fog {
+  background:
+    linear-gradient(to bottom, rgba(13, 17, 23, 0.82) 0%, rgba(13, 17, 23, 0.4) 14%, rgba(13, 17, 23, 0) 34%),
+    radial-gradient(circle at 50% 56%, rgba(0, 0, 0, 0) 58%, rgba(0, 0, 0, 0.5) 100%);
+}
+.hud-mini-ring {
+  border: 2px solid rgba(255, 255, 255, 0.72);
+  box-shadow: 0 0 0 3px rgba(5, 8, 11, 0.88), 0 6px 18px rgba(0, 0, 0, 0.55), inset 0 0 16px rgba(0, 0, 0, 0.7);
+}
+.hud-mini-district {
+  /* street / area tab hanging off the bottom of the ring, clear of the compass and icons */
+  position: absolute;
+  left: 50%;
+  top: calc(100% + 2px);
+  transform: translateX(-50%);
+  max-width: 108%;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  padding: 1px 8px 0;
+  border-radius: 3px;
+  background: rgba(5, 8, 11, 0.82);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  font-size: clamp(10px, calc(var(--mini) * 0.1), 12px);
+  line-height: 1.35;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: #e6ebf2;
+  pointer-events: none;
+}
+
+/* ---- floating joystick: resting ring bottom-left; jumps under the thumb while active ---------- */
+.hud-joy-base {
+  position: absolute;
+  left: var(--hud-l);
+  bottom: var(--hud-b);
+  width: var(--hud-joy);
+  height: var(--hud-joy);
+  border-radius: 9999px;
+  opacity: calc(0.55 * var(--ctl-o, 1));
+  pointer-events: none;
+  transition: opacity 150ms;
+  will-change: transform;
+}
+.hud-joy-base[data-active='1'] {
+  left: 0;
+  top: 0;
+  bottom: auto;
+  opacity: 1;
+  transition: none;
+}
+.hud-joy-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  background: rgba(8, 10, 14, 0.34);
+  border: 1.5px solid rgba(255, 255, 255, 0.3);
+  box-shadow: inset 0 0 0 2px rgba(0, 0, 0, 0.25), 0 2px 10px rgba(0, 0, 0, 0.3);
+}
+.hud-joy-ring::before {
+  /* inner guide ring */
+  content: '';
+  position: absolute;
+  inset: 26%;
+  border-radius: 9999px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+.hud-joy-knob {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 40%;
+  height: 40%;
+  margin: -20% 0 0 -20%;
+  border-radius: 9999px;
+  background: rgba(235, 240, 247, 0.5);
+  border: 1.5px solid rgba(255, 255, 255, 0.75);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+  will-change: transform;
+}
+.hud-joy-base[data-active='1'] .hud-joy-knob {
+  background: rgba(255, 255, 255, 0.82);
+  border-color: #fff;
+}
+
+@keyframes hud-pulse {
+  50% {
+    opacity: 0.35;
+  }
+}
+@keyframes hud-toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.97);
+  }
+}
+@keyframes hud-ring {
+  0% {
+    box-shadow: 0 0 0 0 rgba(242, 193, 78, 0.55);
+  }
+  100% {
+    box-shadow: 0 0 0 14px rgba(242, 193, 78, 0);
+  }
+}
+.hud-pulse {
+  animation: hud-pulse 0.9s ease-in-out infinite;
+}
+.hud-toast-in {
+  animation: hud-toast-in 180ms ease-out;
+}
+.hud-ring {
+  animation: hud-ring 1.6s ease-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .hud-pulse,
+  .hud-ring {
+    animation: none;
+  }
+  .hud-toast-in {
+    animation: none;
+  }
+}
+
+html,
+body {
+  overscroll-behavior: none;
+}
+
+/* map screen: the crosshair settles onto the centred place */
+.map-reticle {
+  margin-left: -36px;
+  margin-top: -36px;
+  width: 72px;
+  height: 72px;
+  animation: map-reticle-in 260ms ease-out both;
+  filter: drop-shadow(0 0 2px rgba(0, 0, 0, 0.35));
+}
+@keyframes map-reticle-in {
+  from { opacity: 0; transform: scale(1.7); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+
+/* =====================================================================================
+   Settings page (src/ui/MoreMenuModal.tsx + src/ui/settings/kit.tsx)
+   Same family as the HUD: near-black surfaces, hairline borders, one warm accent, condensed type.
+   ===================================================================================== */
+.settings-root {
+  --st-bg: #0b0e13;
+  --st-panel: #10141b;
+  --st-card: #151a23;
+  --st-line: rgba(255, 255, 255, 0.08);
+  --st-ink: #f1f4f8;
+  --st-dim: #93a0b2;
+  --st-accent: #f2c14e;
+  font-family: 'Barlow Condensed', 'Arial Narrow', 'Roboto Condensed', system-ui, sans-serif;
+  letter-spacing: 0.02em;
+  -webkit-font-smoothing: antialiased;
+  color-scheme: dark;
+}
+.settings-root .st-card {
+  background: var(--st-card);
+  border: 1px solid var(--st-line);
+  border-radius: 12px;
+  overflow: hidden;
+}
+.settings-root .st-label {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--st-dim);
+}
+.settings-root main {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+}
+.st-enter {
+  animation: st-enter 160ms ease-out;
+}
+@keyframes st-enter {
+  from { opacity: 0; transform: scale(0.985); }
+  to { opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .st-enter { animation: none; }
+}
+
+/* ------------------------------------------------------------------ proximity chat (ui/hud/ChatBox.tsx) */
+.chat-box {
+  --chat-lh: 18px;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 4px 9px 3px;
+  border-radius: 10px;
+  /* see-through: the world shows behind it, only a thin light edge marks the box */
+  background: rgba(0, 0, 0, 0.16);
+  border: 1px solid rgba(255, 255, 255, 0.26);
+  transition: background 0.2s, border-color 0.2s;
+}
+.chat-box[data-focus] {
+  background: rgba(0, 0, 0, 0.34);
+  border-color: rgba(255, 255, 255, 0.6);
+}
+.chat-list {
+  /* five lines; older ones are reached by scrolling up */
+  max-height: calc(5 * var(--chat-lh));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+  scrollbar-width: none;
+  padding-bottom: 3px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.16);
+  -webkit-user-select: text;
+  user-select: text;
+}
+.chat-list::-webkit-scrollbar {
+  display: none;
+}
+.chat-line,
+.chat-input,
+.chat-input::placeholder {
+  /* white letters with a black border and a black shadow */
+  color: #fff;
+  text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000, 0 2px 5px rgba(0, 0, 0, 0.85);
+}
+.chat-line {
+  font-size: 15px;
+  font-weight: 600;
+  line-height: var(--chat-lh);
+  overflow-wrap: anywhere;
+}
+.chat-name {
+  font-weight: 700;
+}
+.chat-input-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding-top: 1px;
+}
+.chat-input {
+  flex: 1;
+  min-width: 0;
+  height: 26px;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  outline: 0;
+  font-family: inherit;
+  /* 16px: anything smaller makes iPhones zoom the page when the box is tapped */
+  font-size: 16px;
+  font-weight: 600;
+  -webkit-user-select: text !important;
+  user-select: text !important;
+  touch-action: manipulation;
+}
+.chat-input::placeholder {
+  opacity: 1;
+}
+.chat-send {
+  flex: none;
+  width: 26px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  border-radius: 6px;
+  cursor: pointer;
+}
+.chat-send:active {
+  background: rgba(255, 255, 255, 0.3);
+}

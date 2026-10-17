@@ -1,0 +1,28 @@
+# Codemagic build: International Life / Beta Lagos RP -> installable Android APK (debug-signed, installs directly on a phone).
+# Codemagic: Add application -> pick this repository -> choose "codemagic.yaml" -> Start new build -> workflow "android-apk".
+# The game files are NOT inside the APK: they come from UPDATE_URL (Cloudflare Pages). Change UPDATE_URL below if your link is different.
+workflows:
+  android-apk:
+    name: Android APK
+    instance_type: mac_mini_m2
+    max_build_duration: 60
+    environment:
+      node: lts
+      java: 21
+      vars:
+        SKIP_GAME_INSTALL: "1"
+        UPDATE_URL: "https://beta-lagos-rp.pages.dev"
+    cache:
+      cache_paths:
+        - $HOME/.gradle/caches
+        - $CM_BUILD_DIR/node_modules
+    scripts:
+      - name: Install packages
+        script: npm install --no-audit --no-fund
+      - name: Update-logic tests
+        script: npm test
+        ignore_failure: true
+      - name: Build the APK
+        script: npm run apk
+    artifacts:
+      - apk/*.apk

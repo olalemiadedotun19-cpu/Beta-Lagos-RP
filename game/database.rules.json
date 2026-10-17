@@ -1,0 +1,173 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+    "users": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && auth.uid === $uid",
+        "save": {
+          ".validate": "newData.hasChildren(['v', 'updatedAt', 'data'])",
+          "v": {
+            ".validate": "newData.isNumber()"
+          },
+          "updatedAt": {
+            ".validate": "newData.isNumber()"
+          },
+          "data": {
+            ".validate": "newData.isString() && newData.val().length < 100000"
+          },
+          "$other": {
+            ".validate": false
+          }
+        },
+        "email": {
+          ".validate": "newData.isString() && newData.val().length >= 3 && newData.val().length <= 100"
+        },
+        "$other": {
+          ".validate": false
+        }
+      }
+    },
+    "online": {
+      ".read": "auth != null",
+      "$uid": {
+        ".write": "auth != null && auth.uid === $uid",
+        ".validate": "newData.hasChildren(['n'])",
+        "n": {
+          ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 60 && (auth.token.email === 'dotcon@players.internallife.game' || !newData.val().matches(/^.*[dD][^a-zA-Z]*[oO0][^a-zA-Z]*[tT][^a-zA-Z]*[cC][^a-zA-Z]*[oO0][^a-zA-Z]*[nN].*$/))"
+        },
+        "o": {
+          "head": {
+            ".validate": "newData.isString() && newData.val().length <= 40"
+          },
+          "shirts": {
+            ".validate": "newData.isString() && newData.val().length <= 40"
+          },
+          "trousers": {
+            ".validate": "newData.isString() && newData.val().length <= 40"
+          },
+          "accessories": {
+            ".validate": "newData.isString() && newData.val().length <= 40"
+          },
+          "$other": {
+            ".validate": false
+          }
+        },
+        "$other": {
+          ".validate": false
+        }
+      }
+    },
+    "state": {
+      ".read": "auth != null",
+      "$uid": {
+        ".write": "auth != null && auth.uid === $uid",
+        ".validate": "newData.hasChildren(['x', 'y', 'z', 'r', 'g', 'i', 'k', 'kt', 'km'])",
+        "x": {
+          ".validate": "newData.isNumber() && newData.val() > -6000 && newData.val() < 6000"
+        },
+        "y": {
+          ".validate": "newData.isNumber() && newData.val() > -500 && newData.val() < 3000"
+        },
+        "z": {
+          ".validate": "newData.isNumber() && newData.val() > -6000 && newData.val() < 6000"
+        },
+        "r": {
+          ".validate": "newData.isNumber() && newData.val() >= -7 && newData.val() <= 7"
+        },
+        "g": {
+          ".validate": "newData.isNumber() && (newData.val() === 0 || newData.val() === 1)"
+        },
+        "i": {
+          ".validate": "newData.isNumber() && (newData.val() === 0 || newData.val() === 1)"
+        },
+        "k": {
+          ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 3"
+        },
+        "kt": {
+          ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 100"
+        },
+        "km": {
+          ".validate": "newData.isNumber() && (newData.val() === 0 || newData.val() === 1)"
+        },
+        "h": {
+          ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 60"
+        },
+        "hp": {
+          ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 100"
+        },
+        "t": {
+          ".validate": "newData.isNumber()"
+        },
+        "c": {
+          ".validate": "newData.hasChildren(['x', 'y', 'z', 'r', 'p', 'l', 's', 'dl', 'dr'])",
+          "x": {
+            ".validate": "newData.isNumber() && newData.val() > -6000 && newData.val() < 6000"
+          },
+          "y": {
+            ".validate": "newData.isNumber() && newData.val() > -500 && newData.val() < 3000"
+          },
+          "z": {
+            ".validate": "newData.isNumber() && newData.val() > -6000 && newData.val() < 6000"
+          },
+          "r": {
+            ".validate": "newData.isNumber() && newData.val() >= -7 && newData.val() <= 7"
+          },
+          "p": {
+            ".validate": "newData.isNumber() && newData.val() >= -2 && newData.val() <= 2"
+          },
+          "l": {
+            ".validate": "newData.isNumber() && newData.val() >= -2 && newData.val() <= 2"
+          },
+          "s": {
+            ".validate": "newData.isNumber() && newData.val() >= -2 && newData.val() <= 2"
+          },
+          "dl": {
+            ".validate": "newData.isNumber() && (newData.val() === 0 || newData.val() === 1)"
+          },
+          "dr": {
+            ".validate": "newData.isNumber() && (newData.val() === 0 || newData.val() === 1)"
+          },
+          "$other": {
+            ".validate": false
+          }
+        },
+        "$other": {
+          ".validate": false
+        }
+      }
+    },
+    "chat": {
+      ".read": "auth != null",
+      "$id": {
+        ".write": "auth != null && ((!data.exists() && newData.child('u').val() === auth.uid) || (!newData.exists() && (data.child('u').val() === auth.uid || data.child('t').val() < now - 120000)))",
+        ".validate": "newData.hasChildren(['u', 'n', 'm', 'x', 'z', 'i', 't'])",
+        "u": {
+          ".validate": "newData.isString() && newData.val() === auth.uid"
+        },
+        "n": {
+          ".validate": "newData.isString() && newData.val() === root.child('online').child(auth.uid).child('n').val()"
+        },
+        "m": {
+          ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 120"
+        },
+        "x": {
+          ".validate": "newData.isNumber() && newData.val() > -6000 && newData.val() < 6000"
+        },
+        "z": {
+          ".validate": "newData.isNumber() && newData.val() > -6000 && newData.val() < 6000"
+        },
+        "i": {
+          ".validate": "newData.isNumber() && (newData.val() === 0 || newData.val() === 1)"
+        },
+        "t": {
+          ".validate": "newData.val() === now"
+        },
+        "$other": {
+          ".validate": false
+        }
+      }
+    }
+  }
+}
